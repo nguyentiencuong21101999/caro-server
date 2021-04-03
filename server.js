@@ -1,3 +1,4 @@
+const e = require('express');
 const express = require('express');
 const { isBuffer } = require('util');
 const app = express();
@@ -5,8 +6,8 @@ const server = require('http').Server(app);
 const { checkWin, findPlayerWin } = require("./helper/caro")
 const io = require('socket.io')(server, {
     cors: {
-        // origin: "https://messengerss.herokuapp.com",
-        origin: "http://localhost:3000",
+         origin: "https://messengerss.herokuapp.com",
+       // origin: "http://localhost:3000",
         methods: ["GET", "POST"],
         allowedHeaders: ["my-custom-header"],
         credentials: true
@@ -69,9 +70,6 @@ io.on("connection", async (socket) => {
 
     userOnline.push(socket.id)
     io.emit("userOnline", userOnline)
-
-
-
     socket.on('join-rooms', (data) => {
         let numberPlayer = rooms[data.roomIndex].player.length;
         if (numberPlayer === 2) {
@@ -125,15 +123,25 @@ io.on("connection", async (socket) => {
     })
 
     socket.on('set-value-chess', (value) => {
+        let players = true;
+        if (value.currentType === x) {
+            players = o;
+        } else {
+            players = x;
+        }
         let user = rooms[value.roomIndex].player;
         const pos = user.map(function (e) { return e.socketId; }).indexOf(socket.id);
         const type = user[pos].type;
         let currentRoom = rooms[value.roomIndex];
-        currentRoom.data[value.row][value.col].value = type;
-        currentRoom.player.forEach(player => {
-            // currentRoom.data[value.row][value.col].value = value.type
-            io.sockets.in(player.socketId).emit("request-set-value-chess", currentRoom.data)
-        });
+        console.log(currentRoom.data[value.row][value.col].value);
+        if (currentRoom.data[value.row][value.col].value === "") {
+            currentRoom.data[value.row][value.col].value = type;
+            currentRoom.player.forEach(player => {
+                io.sockets.in(player.socketId).emit("request-set-value-chess", currentRoom.data)
+                io.sockets.in(player.socketId).emit("request-set-player", players)
+            });
+        }
+     
         const results = findPlayerWin(rooms, value);
         if (results) {
             if (results.dem >= 5 && results.type === "x") {
@@ -195,7 +203,6 @@ io.on("connection", async (socket) => {
 
 
     })
-
     socket.on("ready", data => {
         rooms[data.roomIndex].player.forEach(player => {
             // currentRoom.data[value.row][value.col].value = value.type

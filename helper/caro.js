@@ -3,7 +3,6 @@ function findPlayerWin(rooms, value) {
         for (let j = 0; j < 20; j++) {
             if (rooms[value.roomIndex].data[i][j].value === "x") {
                 const results = checkWin(rooms, value, "x", i, j);
-                console.log(results);
                 if (results) {
                     return results;
                 }
