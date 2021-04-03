@@ -2,7 +2,7 @@ const express = require('express');
 const { isBuffer } = require('util');
 const app = express();
 const server = require('http').Server(app);
-
+const { checkWin, findPlayerWin } = require("./helper/caro")
 const io = require('socket.io')(server, {
     cors: {
         // origin: "https://messengerss.herokuapp.com",
@@ -20,7 +20,7 @@ let userOnline = [];
 for (let rowNumber = 0; rowNumber < 12; rowNumber++) {
     let newRooms = {
         roomName: rowNumber,
-        numberPlayer: 0,
+        ready: [],
         player: [],
         data: []
     }
@@ -40,6 +40,7 @@ for (let rowNumber = 0; rowNumber < 12; rowNumber++) {
     newRooms.data = newData;
     rooms.push(newRooms)
 }
+
 
 let createChess = () => {
     let newData = [];
@@ -129,48 +130,47 @@ io.on("connection", async (socket) => {
         const type = user[pos].type;
         let currentRoom = rooms[value.roomIndex];
         currentRoom.data[value.row][value.col].value = type;
-
-        for (let i = 0; i < 20; i++) {
-            for (let j = 0; j < 20; j++) {
-                if (rooms[value.roomIndex].data[i][j].value === "x") {
-                    // if(checkWin(0,i,j)>=5){
-                    //     fillColorLine(checkLine,i,j);
-                    //     player = 0;
-
-                    // }
-                    let dem = 0;
-                    let itemp = i, jtemp = j;
-                    try {
-                        //check ngang;
-                        while (dem < 5) {
-                            if (rooms[value.roomIndex].data[itemp][jtemp].value === "x") {
-                                dem++;
-                                jtemp++;
-                                console.log(dem);
-                            } else {
-                                break;
-                            }
-                        }
-                        if (dem >= 5) {
-                            console.log(dem);
-                            return dem;
-                        }
-                      
-                    } catch { }
-                }
-                else if (rooms[value.roomIndex].data[i][j] === "o") {
-
-                    // if(checkWin(1,i,j)>=5){
-                    //     fillColorLine(checkLine,i,j);
-                    //     player = 1;
-                    // }
-                }
-            }
-        }
         currentRoom.player.forEach(player => {
             // currentRoom.data[value.row][value.col].value = value.type
             io.sockets.in(player.socketId).emit("request-set-value-chess", currentRoom.data)
         });
+        const results = findPlayerWin(rooms, value);
+        if (results) {
+            if (results.dem >= 5 && results.type === "x") {
+                user.forEach(element => {
+                    if (element.type === results.type) {
+                        const values = {
+                            message: element.info.fullname + "  thắng !!!",
+                            setValue: false
+                        }
+                        currentRoom.player.forEach(player => {
+                            io.sockets.in(player.socketId).emit("send-user-win", values)
+                        })
+                        const results = createChess();
+                        currentRoom.data = results;
+                    }
+                })
+
+            } else {
+                if (results.dem >= 5 && results.type === "o") {
+                    user.forEach(element => {
+                        if (element.type === results.type) {
+                            const values = {
+                                message: element.info.fullname + "  thắng !!!",
+                                setValue: false
+                            }
+                            currentRoom.player.forEach(player => {
+                                io.sockets.in(player.socketId).emit("send-user-win", values)
+                            })
+                            const results = createChess();
+                            currentRoom.data = results;
+                        }
+                    })
+
+                }
+            }
+        }
+
     })
     socket.on('leave-rooms', data => {
 
@@ -196,6 +196,13 @@ io.on("connection", async (socket) => {
 
     })
 
+    socket.on("ready", data => {
+        rooms[data.roomIndex].player.forEach(player => {
+            // currentRoom.data[value.row][value.col].value = value.type
+            io.sockets.in(player.socketId).emit("request-ready", data.name)
+        });
+    })
+
     socket.on("disconnect", () => {
         userOnline.splice(userOnline.indexOf(socket.id), 1); //xóa phần tử trong mảng = indexOf(pt trong mang);
         let roomIndex = -1;
@@ -208,7 +215,6 @@ io.on("connection", async (socket) => {
                         roomss.player.splice(pos, 1)
                     }
                     if (roomss.player.length > 0) {
-                        console.log("a");
                         if (roomss.player[0].type === "o") {
                             roomss.player[0].type = "x";
                             io.in(roomss.player[0].name + "caro").emit('update-rooms', rooms)
