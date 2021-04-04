@@ -26,9 +26,9 @@ for (let rowNumber = 0; rowNumber < 12; rowNumber++) {
         data: []
     }
     let newData = [];
-    for (let row = 0; row < 20; row++) {
+    for (let row = 0; row < 15; row++) {
         let newRow = [];
-        for (let col = 0; col < 20; col++) {
+        for (let col = 0; col < 17; col++) {
             newRow.push({
                 row: row,
                 col: col,
@@ -45,9 +45,9 @@ for (let rowNumber = 0; rowNumber < 12; rowNumber++) {
 
 let createChess = () => {
     let newData = [];
-    for (let row = 0; row < 20; row++) {
+    for (let row = 0; row < 15; row++) {
         let newRow = [];
-        for (let col = 0; col < 20; col++) {
+        for (let col = 0; col < 17; col++) {
             newRow.push({
                 row: row,
                 col: col,
@@ -122,7 +122,7 @@ io.on("connection", async (socket) => {
         }
     })
 
-    socket.on('set-value-chess', (value) => {
+    socket.on('set-value-chess', async (value) => {
         let players = true;
         if (value.currentType === x) {
             players = o;
@@ -133,15 +133,14 @@ io.on("connection", async (socket) => {
         const pos = user.map(function (e) { return e.socketId; }).indexOf(socket.id);
         const type = user[pos].type;
         let currentRoom = rooms[value.roomIndex];
-        console.log(currentRoom.data[value.row][value.col].value);
         if (currentRoom.data[value.row][value.col].value === "") {
             currentRoom.data[value.row][value.col].value = type;
-            currentRoom.player.forEach(player => {
-                io.sockets.in(player.socketId).emit("request-set-value-chess", currentRoom.data)
-                io.sockets.in(player.socketId).emit("request-set-player", players)
+            currentRoom.player.forEach(async player => {
+                await io.sockets.in(player.socketId).emit("request-set-value-chess", currentRoom.data)
+                await io.sockets.in(player.socketId).emit("request-set-player", players)
             });
         }
-     
+
         const results = findPlayerWin(rooms, value);
         if (results) {
             if (results.dem >= 5 && results.type === "x") {
@@ -211,6 +210,7 @@ io.on("connection", async (socket) => {
     })
 
     socket.on("disconnect", () => {
+        console.log(socket.id);
         userOnline.splice(userOnline.indexOf(socket.id), 1); //xóa phần tử trong mảng = indexOf(pt trong mang);
         let roomIndex = -1;
         rooms.map(roomss => {
@@ -222,13 +222,15 @@ io.on("connection", async (socket) => {
                         roomss.player.splice(pos, 1)
                     }
                     if (roomss.player.length > 0) {
+                        console.log(roomss.player[0].type === "o");
                         if (roomss.player[0].type === "o") {
                             roomss.player[0].type = "x";
                             io.in(roomss.player[0].name + "caro").emit('update-rooms', rooms)
-                            io.in(roomss.player[0].name + "caro").emit('set-value-chess', false)
-                            const results = createChess();
-                            roomss.data = results;
+
                         }
+                        io.in(roomss.player[0].name + "caro").emit('set-value-chess', false)
+                        const results = createChess();
+                        roomss.data = results;
                     }
                 })
             }

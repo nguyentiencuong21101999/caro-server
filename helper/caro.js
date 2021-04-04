@@ -1,6 +1,6 @@
 function findPlayerWin(rooms, value) {
-    for (let i = 0; i < 20; i++) {
-        for (let j = 0; j < 20; j++) {
+    for (let i = 0; i < 15; i++) {
+        for (let j = 0; j < 17; j++) {
             if (rooms[value.roomIndex].data[i][j].value === "x") {
                 const results = checkWin(rooms, value, "x", i, j);
                 if (results) {
