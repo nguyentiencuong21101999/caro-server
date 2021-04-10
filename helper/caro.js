@@ -84,9 +84,27 @@ function checkWin(rooms, value, type, i, j) {
     } catch { }
     //kết thúc
 }
+let createChess = () => {
+    let newData = [];
+    for (let row = 0; row < 15; row++) {
+        let newRow = [];
+        for (let col = 0; col < 17; col++) {
+            newRow.push({
+                row: row,
+                col: col,
+                value: ""
+            })
+
+        }
+        newData.push(newRow)
+    }
+    return newData;
+
+}
 
 module.exports = {
     findPlayerWin,
-    checkWin
+    checkWin,
+    createChess
 
 }
